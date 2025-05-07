@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test de Conocimientos: Ruta y Procesos</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.2/dist/confetti.browser.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .correct-feedback { color: #22c55e; font-weight: 600; }
+        .incorrect-feedback { color: #ef4444; font-weight: 600; }
+        .answer-button { transition: background-color 0.2s ease-in-out, border-color 0.2s ease-in-out; }
+        .correct-answer-button { background-color: #22c55e !important; border-color: #16a34a !important; color: white !important; }
+        .incorrect-answer-button { background-color: #ef4444 !important; border-color: #dc2626 !important; color: white !important; opacity: 0.7; }
+        .answer-button:disabled { opacity: 0.6; cursor: not-allowed; }
+        #feedback-area { min-height: 60px; display: flex; align-items: center; justify-content: center; }
+        #feedback-text { max-width: 90%; }
+        #congrats-overlay { backdrop-filter: blur(5px); }
+        #start-screen { background-size: cover; background-position: center; position: relative; }
+
+        /* NEW: Styles for route animation */
+        #route-path {
+            stroke-width: 4; /* Thickness of the route line */
+            stroke: #3b82f6; /* Blue color for the route */
+            fill: none; /* No fill color */
+            /* stroke-dasharray and stroke-dashoffset set by JS */
+        }
+        /* Animation definition */
+        @keyframes drawRoute {
+            to {
+                stroke-dashoffset: 0; /* End fully visible */
+            }
+        }
+        /* Class to apply animation (optional, can be done via JS style) */
+        /* .draw-animation {
+             animation: drawRoute 1.5s ease-in-out forwards;
+        } */
+
+    </style>
+</head>
+<body class="bg-gray-950 min-h-screen relative overflow-hidden"> <div id="start-screen" class="flex flex-col items-center justify-center text-center min-h-screen w-full text-gray-200 p-4 bg-cover bg-center bg-black bg-opacity-60">
+        <div class="relative z-10">
+            <h1 class="text-3xl md:text-4xl lg:text-5xl font-bold text-white mb-4 leading-tight drop-shadow-md">Comenzar la Aventura de Rutas y Procesos</h1>
+            <p class="text-lg text-gray-300 mb-10 drop-shadow-md">Test Diseñado por Carlos Fabro</p>
+            <button id="start-button" class="bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-8 rounded-xl shadow-lg transition duration-200 ease-in-out text-xl transform hover:scale-105">
+                ¡Comenzar!
+            </button>
+        </div>
+    </div>
+
+    <div id="route-animation-screen" class="absolute inset-0 flex items-center justify-center bg-gray-950 hidden z-20">
+         <svg width="80%" height="80%" viewBox="0 0 500 300" xmlns="http://www.w3.org/2000/svg">
+            <path id="route-path" d="M 50 150 Q 150 50 250 150 T 450 150" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="50" cy="150" r="8" fill="#10b981"/> <path d="M 440 140 L 450 150 L 440 160 Z" fill="#3b82f6"/> </svg>
+    </div>
+
+    <div id="quiz-main-container" class="absolute inset-0 flex items-center justify-center p-4 hidden z-10">
+        <div class="bg-gray-900 p-6 md:p-8 rounded-lg shadow-xl w-full max-w-3xl text-gray-200">
+            <h1 class="text-2xl md:text-3xl font-bold text-center text-white mb-6">Test de Conocimientos: Ruta y Procesos</h1>
+            <div id="quiz-container">
+                <div id="question-area" class="mb-6 p-4 bg-gray-700 rounded-lg min-h-[100px] flex items-center justify-center border-2 border-blue-500 shadow-md">
+                    <p id="question-text" class="text-lg text-center text-gray-100"></p>
+                </div>
+                <div id="answer-buttons" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <button class="answer-button bg-gray-600 hover:bg-gray-500 text-white font-semibold py-3 px-4 rounded-xl shadow border border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75"></button>
+                    <button class="answer-button bg-gray-600 hover:bg-gray-500 text-white font-semibold py-3 px-4 rounded-xl shadow border border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75"></button>
+                    <button class="answer-button bg-gray-600 hover:bg-gray-500 text-white font-semibold py-3 px-4 rounded-xl shadow border border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75"></button>
+                    <button class="answer-button bg-gray-600 hover:bg-gray-500 text-white font-semibold py-3 px-4 rounded-xl shadow border border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75"></button>
+                </div>
+                <div id="feedback-area" class="text-center mb-4">
+                    <p id="feedback-text" class="text-base"></p>
+                </div>
+                <div class="flex justify-between items-center mt-6">
+                     <div id="score-area" class="text-left">
+                        <p class="text-gray-300 font-medium">Puntaje: <span id="score" class="font-bold text-white">0</span></p>
+                    </div>
+                    <button id="next-button" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 px-5 rounded-lg shadow transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75 hidden">
+                        Siguiente
+                    </button>
+                </div>
+            </div>
+            <div id="final-score-container" class="text-center hidden mt-8">
+                <h2 class="text-xl font-semibold text-white mb-4">¡Quiz Completado!</h2>
+                <p class="text-lg text-gray-300 mb-4">Tu puntaje final es: <span id="final-score" class="font-bold text-white">0</span> de <span id="total-questions" class="font-bold text-white">0</span></p>
+                 <button id="restart-button" class="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2 px-6 rounded-lg shadow transition duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-indigo-400 focus:ring-opacity-75">
+                    Reiniciar Quiz
+                </button>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="congrats-overlay" class="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center p-8 text-center z-50 hidden">
+        <div class="bg-gradient-to-br from-blue-600 to-indigo-700 p-8 rounded-xl shadow-2xl max-w-lg">
+            <p id="congrats-message" class="text-white text-2xl md:text-3xl font-bold mb-6"></p>
+            <button id="congrats-close-button" class="bg-yellow-400 hover:bg-yellow-500 text-gray-900 font-bold py-2 px-6 rounded-lg shadow-md transition duration-200 ease-in-out">
+                ¡Continuar!
+            </button>
+        </div>
+    </div>
+
+    <script>
+        // --- Quiz Data ---
+        const questions = [ /* ... question data ... */
+             {
+                statement: "¿Cuándo se entregan las llaves del camión, el teléfono y las boletas?",
+                correctAnswer: "Al finalizar la matinal se entregan al chofer",
+                distractors: ["Al comienzo de la matinal", "Al llegar al CD la retiro en modulacion", "Al iniciar la ruta"],
+                explanationCorrect: "¡Correcto! Las llaves, el teléfono y las boletas se entregan al chofer al finalizar la matinal.",
+                explanationIncorrect: "Incorrecto. El procedimiento indica que las llaves, teléfono y boletas se entregan solo al chofer al final de la matinal, una vez concluidos los temas del día."
+            },
+            {
+                statement: "¿Cuantas asistencias a las matinales debo cumplir por semana?",
+                correctAnswer: "3 matinales",
+                distractors: ["Todas las matinales", "1 matinal", "5 matinales"],
+                explanationCorrect: "¡Correcto! La norma es clara: se dictan matinales de lunes a viernes y es obligatorio participar activamente de *3 por semana*.",
+                explanationIncorrect: "Incorrecto. Aunque hay matinales todos los días hábiles, la obligación es asistir a *3 por semana*."
+            },
+            {
+                statement: "El tiempo máximo desde que se ficha ingreso hasta salir a reparto (liberación) es de:",
+                correctAnswer: "30 minutos",
+                distractors: ["1 hora", "15 minutos", "45 minutos"],
+                explanationCorrect: "¡Correcto! El tiempo máximo de liberación (desde fichar hasta salir) es de *30 minutos*, buscando la eficiencia y maximizar el tiempo en ruta.",
+                explanationIncorrect: "Incorrecto. El objetivo es maximizar el tiempo en ruta, por lo que el tiempo interno máximo de liberación es de *30 minutos*, no más."
+            },
+             {
+                statement: "¿Cómo se debe realizar el check de inventario en BEES?",
+                correctAnswer: "Con todos los EPP colocados",
+                distractors: ["Sin EPP", "Con los guantes", "Con las gafas protectoras"],
+                explanationCorrect: "¡Correcto! La seguridad es primordial. El check de inventario en BEES se hace controlando la carga *con todos los Equipos de Protección Personal (EPP) colocados*.",
+                explanationIncorrect: "Incorrecto. Por seguridad, al realizar el check de inventario en BEES se debe tener *todos los EPP colocados* mientras se controla la carga junto al camión."
+            },
+            {
+                statement: "Si el check de seguridad del camión en GINFO da un 'NO OK' crítico, ¿qué se debe hacer?",
+                correctAnswer: "No salir a ruta e informar a modulación",
+                distractors: ["Salir a ruta con precaución", "Arreglarlo uno mismo", "Esperar al día siguiente"],
+                explanationCorrect: "¡Correcto! Un 'NO OK' crítico en GINFO significa que el camión no es seguro y *no debe salir a ruta*. Se debe informar inmediatamente a modulación para realizar el cambio.",
+                explanationIncorrect: "Incorrecto. La seguridad es prioritaria. Ante un 'NO OK' crítico del camión, *no se puede salir a ruta*. Hay que informar a modulación para que gestionen el cambio."
+            },
+            {
+                statement: "¿En qué momento se debe iniciar el viaje en BEES y notificar al primer PDV?",
+                correctAnswer: "En el portón, mientras seguridad escanea el QR del camion",
+                distractors: ["Al llegar al primer cliente", "Antes de la matinal", "Al finalizar la matinal"],
+                explanationCorrect: "¡Correcto! El inicio del viaje en BEES y la notificación al primer PDV es una tarea crítica que se hace *en el portón al momento de salir del cd*.",
+                explanationIncorrect: "Incorrecto. El inicio del viaje en BEES se hacen *en el portón*, antes de salir y en ese momento se notifica al primer PDV a visitar."
+            },
+            {
+                statement: "Según las normas de calidad, la apilabilidad máxima permitida es de:",
+                correctAnswer: "una altura de 4 cajones de alto",
+                distractors: ["una altura de 3 cajones de alto", "una altura de 5 cajones de alto", "una altura de 2 cajones de alto"],
+                explanationCorrect: "¡Correcto! Para cuidar la calidad del producto y evitar roturas, la apilabilidad máxima es de *4 cajones de alto*.",
+                explanationIncorrect: "Incorrecto. La norma de calidad especifica no apilar más de *4 cajones de alto* para evitar caidas o daños ya sea al producto o a quien lo transporte."
+            },
+            {
+                statement: "El objetivo actual de puntuación para Rate My Delivery (RMD - 5 estrellas) es de:",
+                correctAnswer: "4.9 estrellas",
+                distractors: ["5.0 estrellas", "4.5 estrellas", "4.0 estrellas"],
+                explanationCorrect: "¡Correcto! El objetivo para Rate My Delivery (RMD) es alcanzar las *4.9 estrellas*, buscando la excelencia en el servicio de entrega percibido por el cliente.",
+                explanationIncorrect: "Incorrecto. El objetivo de servicio para RMD es de: *4.9 estrellas*. Es el indicador que mide directamente la percepción del cliente sobre la entrega."
+            },
+            {
+                statement: "¿Para qué está disponible el número de teléfono del cliente en la app?",
+                correctAnswer: "Para contactarlo y coordinar la entrega",
+                distractors: ["Solo para emergencias", "Para ofrecerle otros productos", "Para verificar su pedido"],
+                explanationCorrect: "¡Correcto! El número del cliente está disponible en la app para que el EDD pueda ser autónomo, *contactarlo y coordinar la entrega* o resolver situaciones.",
+                explanationIncorrect: "Incorrecto. La app incluye el teléfono del cliente específicamente para facilitar la coordinación de la entrega y dar autonomía al EDD para resolver imprevistos."
+            },
+            {
+                statement: "¿Cuándo se debe finalizar el viaje en BEES Deliver?",
+                correctAnswer: "Al entregar el celular y la llave del camion a modulación",
+                distractors: ["Al llegar al último cliente", "Al ingresar al CD antes de que los ayudantes desciendan del camion", "Al volver al CD antes de estacionar"],
+                explanationCorrect: "¡Correcto! El viaje en BEES Deliver se finaliza como uno de los últimos pasos, al momento de entregar el celular y la llave del camión a modulación, cerrando el ciclo del día.",
+                explanationIncorrect: "Incorrecto. El procedimiento Post Ruta indica que el viaje en BEES se finaliza al entregar el celular y la llave a modulación, después de pasar por preliquidación y caja."
+            },
+            {
+                statement: "Por seguridad, ¿cuál es el límite de dinero a cobrar en efectivo en la calle?",
+                correctAnswer: "$200,000",
+                distractors: ["$500,000", "$100,000", "No hay límite"],
+                explanationCorrect: "¡Correcto! Por seguridad del equipo y para reducir el efectivo en calle, existe un límite de $200,000 para el cobro en efectivo.",
+                explanationIncorrect: "Incorrecto. El límite máximo de efectivo a cobrar en calle por seguridad es de $200,000. Se deben ofrecer otros medios de pago como QR, cheques o depósitos."
+            },
+            {
+                statement: "¿Qué funcionalidad NO se encuentra en la app MI RUTA?",
+                correctAnswer: "Registrar el check de GINFO",
+                distractors: ["Ver indicadores diarios", "Buscar códigos de producto", "Ver lista de precios de envases"],
+                explanationCorrect: "¡Correcto! MI RUTA tiene muchas funciones útiles (indicadores, precios, códigos, novedades), pero el check de seguridad del camión se hace en la aplicación *GINFO*, no en MI RUTA.",
+                explanationIncorrect: "Incorrecto. El check de seguridad del vehículo se realiza mediante la aplicación *GINFO*. MI RUTA sirve para consultar indicadores, información de productos, novedades, etc."
+            },
+             {
+                statement: "¿Con qué frecuencia se realiza la devolución de los reclamos de 'Cliente crítico' / feedback de ruta?",
+                correctAnswer: "Semanalmente",
+                distractors: ["Diariamente", "Mensualmente", "Solo si hay quejas graves"],
+                explanationCorrect: "¡Correcto! Los feedbacks de ruta y reclamos de clientes críticos se revisan y se da devolución sobre las acciones tomadas de forma *semanal*, usualmente en las matinales.",
+                explanationIncorrect: "Incorrecto. La revisión y devolución de los feedbacks de ruta se realiza con frecuencia *semanal*, para asegurar una gestión ágil y mejora continua."
+            },
+            {
+                statement: "El tiempo medio interno objetivo (TMI, desde llegar al CD hasta irse) es de:",
+                correctAnswer: "30 minutos",
+                distractors: ["1 hora", "20 minutos", "Sin límite de tiempo"],
+                explanationCorrect: "¡Correcto! Similar al tiempo de liberación, el tiempo medio interno post-ruta (check de retorno, descarga, caja, etc.) tiene un objetivo de 30 minutos.",
+                explanationIncorrect: "Incorrecto. Para optimizar la jornada laboral, el proceso post-ruta completo (desde llegar al CD hasta fichar salida) debe completarse en un tiempo de 30 minutos."
+            },
+            {
+                statement: "Si hay productos no aptos que NO superan un piso de paleta, ¿dónde se desechan?",
+                correctAnswer: "En el contenedor de gatera",
+                distractors: ["En el dock de descarga con el autoelevador", "Se dejan en el camion", "Se guardan para revisión interna"],
+                explanationCorrect: "¡Correcto! Los productos no aptos se desechan en el contenedor junto al puesto de verificacion (siempre y cuando no supera un piso de paleta).",
+                explanationIncorrect: "Incorrecto. La forma de desechar depende de la cantidad: menos de un piso de paleta va al contenedor junto al puesto de verificacion. Si es más, se continúa al dock de descarga para que lo deseche el autoelevador."
+            }
+        ];
+        // Congratulatory Messages
+        const congratsMessages = [ /* ... congrats messages ... */
+            "¡Increíble! ¡Eres un ejemplo de conocimiento y eficiencia!",
+            "¡Excelente trabajo! Tu dominio de los procesos es admirable.",
+            "¡Felicidades! Conoces la ruta y los procesos como la palma de tu mano.",
+            "¡Impresionante! Demuestras ser un pilar fundamental en la operación.",
+            "¡5 Puntos! ¡Claramente eres un experto en logística!",
+            "¡Espectacular! Tu dedicación y conocimiento marcan la diferencia.",
+            "¡Magnífico! Resultados así demuestran tu compromiso y habilidad."
+        ];
+
+        // DOM Elements
+        const startScreen = document.getElementById('start-screen');
+        const startButton = document.getElementById('start-button');
+        const routeAnimationScreen = document.getElementById('route-animation-screen'); // NEW: Animation screen
+        const routePath = document.getElementById('route-path'); // NEW: SVG Path
+        const quizMainContainer = document.getElementById('quiz-main-container');
+        const questionTextElement = document.getElementById('question-text');
+        const answerButtonsContainer = document.getElementById('answer-buttons');
+        const feedbackTextElement = document.getElementById('feedback-text');
+        const nextButton = document.getElementById('next-button');
+        const scoreElement = document.getElementById('score');
+        const quizContainer = document.getElementById('quiz-container');
+        const finalScoreContainer = document.getElementById('final-score-container');
+        const finalScoreElement = document.getElementById('final-score');
+        const totalQuestionsElement = document.getElementById('total-questions');
+        const restartButton = document.getElementById('restart-button');
+        const congratsOverlay = document.getElementById('congrats-overlay');
+        const congratsMessageElement = document.getElementById('congrats-message');
+        const congratsCloseButton = document.getElementById('congrats-close-button');
+
+        // Quiz State
+        let currentQuestionIndex = 0;
+        let score = 0;
+        let shuffledQuestions = [];
+        let currentCorrectAnswer = '';
+        const animationDuration = 1500; // ms (1.5 seconds)
+        const animationBuffer = 200; // ms buffer after animation
+
+        // --- Functions ---
+
+        // MODIFIED: startGame to include animation step
+        function startGame() {
+            startScreen.classList.add('hidden'); // Hide start screen
+            routeAnimationScreen.classList.remove('hidden'); // Show animation screen
+
+            // Prepare and trigger the SVG animation
+            if (routePath) {
+                 try { // Adding try-catch for safety if SVG fails
+                    const pathLength = routePath.getTotalLength();
+                    // Set dash array and offset for the animation start
+                    routePath.style.strokeDasharray = pathLength;
+                    routePath.style.strokeDashoffset = pathLength;
+                    // Apply animation using CSS defined keyframes
+                    routePath.style.animation = `drawRoute ${animationDuration / 1000}s ease-in-out forwards`;
+                 } catch (e) {
+                    console.error("Error animating SVG path:", e);
+                    // Skip animation if error occurs
+                    proceedToQuiz();
+                    return; // Exit function early
+                 }
+            } else {
+                 // If no path, skip animation
+                 proceedToQuiz();
+                 return; // Exit function early
+            }
+
+            // Wait for animation to finish, then proceed
+            setTimeout(proceedToQuiz, animationDuration + animationBuffer);
+        }
+
+        // NEW: Function to hide animation and show quiz
+        function proceedToQuiz() {
+            routeAnimationScreen.classList.add('hidden'); // Hide animation screen
+            quizMainContainer.classList.remove('hidden'); // Show quiz container
+             // Reset animation style so it can run again if quiz restarts
+             if(routePath) routePath.style.animation = 'none';
+            restartQuiz(); // Initialize and start the quiz
+        }
+
+
+        function shuffleArray(array) {
+            for (let i = array.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [array[i], array[j]] = [array[j], array[i]];
+            }
+            return array;
+        }
+
+        function loadQuestion() {
+            feedbackTextElement.textContent = '';
+            feedbackTextElement.className = 'text-base';
+            nextButton.classList.add('hidden');
+            answerButtonsContainer.innerHTML = '';
+
+            if (shuffledQuestions && shuffledQuestions.length > 0 && currentQuestionIndex < shuffledQuestions.length) {
+                const currentQuestion = shuffledQuestions[currentQuestionIndex];
+                questionTextElement.textContent = currentQuestion.statement;
+                currentCorrectAnswer = currentQuestion.correctAnswer;
+                const options = shuffleArray([currentQuestion.correctAnswer, ...currentQuestion.distractors]);
+
+                options.forEach(option => {
+                    const button = document.createElement('button');
+                    button.textContent = option;
+                    button.className = 'answer-button bg-gray-600 hover:bg-gray-500 text-white font-semibold py-3 px-4 rounded-xl shadow border border-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:ring-opacity-75';
+                    button.addEventListener('click', handleAnswer);
+                    answerButtonsContainer.appendChild(button);
+                });
+
+            } else if (shuffledQuestions && shuffledQuestions.length > 0) {
+                 showFinalScore();
+            }
+        }
+
+        function triggerConfetti() {
+            if (typeof confetti === 'function') {
+                 confetti({ particleCount: 150, spread: 90, origin: { y: 0.6 }, colors: ['#bb0000', '#ffffff', '#fbb03b'] });
+                 confetti({ particleCount: 100, angle: 60, spread: 65, origin: { x: 0 }, colors: ['#bb0000', '#ffffff', '#fbb03b'] });
+                 confetti({ particleCount: 100, angle: 120, spread: 65, origin: { x: 1 }, colors: ['#bb0000', '#ffffff', '#fbb03b'] });
+            } else {
+                console.warn("Confetti library not loaded.");
+            }
+        }
+
+        function showCongratulatoryMessage() {
+            const randomIndex = Math.floor(Math.random() * congratsMessages.length);
+            congratsMessageElement.textContent = congratsMessages[randomIndex];
+            congratsOverlay.classList.remove('hidden');
+        }
+
+        function handleAnswer(event) {
+            const selectedButton = event.target;
+            const selectedAnswer = selectedButton.textContent;
+            const currentQuestionData = shuffledQuestions[currentQuestionIndex];
+
+            const allAnswerButtons = answerButtonsContainer.querySelectorAll('.answer-button');
+            allAnswerButtons.forEach(button => {
+                button.disabled = true;
+                button.classList.remove('hover:bg-gray-500');
+            });
+
+            let justHitCongratsScore = false;
+
+            if (selectedAnswer === currentCorrectAnswer) {
+                feedbackTextElement.innerHTML = currentQuestionData.explanationCorrect;
+                feedbackTextElement.className = 'text-base correct-feedback';
+                selectedButton.classList.add('correct-answer-button');
+                score++;
+                scoreElement.textContent = score;
+
+                if (score === 3) { triggerConfetti(); }
+                if (score === 5) {
+                    justHitCongratsScore = true;
+                    setTimeout(showCongratulatoryMessage, 500);
+                }
+
+            } else {
+                feedbackTextElement.innerHTML = currentQuestionData.explanationIncorrect;
+                feedbackTextElement.className = 'text-base incorrect-feedback';
+                selectedButton.classList.add('incorrect-answer-button');
+                score--;
+                scoreElement.textContent = score;
+
+                 allAnswerButtons.forEach(button => {
+                    if (button.textContent === currentCorrectAnswer) {
+                        button.classList.add('correct-answer-button');
+                    }
+                });
+            }
+
+            if (!justHitCongratsScore) {
+                 if (currentQuestionIndex < shuffledQuestions.length - 1) {
+                    setTimeout(() => nextButton.classList.remove('hidden'), 1500);
+                } else {
+                    setTimeout(showFinalScore, 3000);
+                }
+            }
+        }
+
+        function showFinalScore() {
+            quizContainer.classList.add('hidden');
+            finalScoreContainer.classList.remove('hidden');
+            finalScoreElement.textContent = score;
+             if (shuffledQuestions && shuffledQuestions.length > 0) {
+                totalQuestionsElement.textContent = shuffledQuestions.length;
+            }
+        }
+
+        function restartQuiz() {
+            currentQuestionIndex = 0;
+            score = 0;
+            scoreElement.textContent = score;
+            shuffledQuestions = shuffleArray([...questions]);
+            finalScoreContainer.classList.add('hidden');
+            quizContainer.classList.remove('hidden');
+            congratsOverlay.classList.add('hidden');
+            // Ensure animation screen is hidden when restarting from final score
+            routeAnimationScreen.classList.add('hidden');
+            loadQuestion();
+        }
+
+        function loadStartBackground() {
+             if(startScreen) {
+                const imageWidth = 1920;
+                const imageHeight = 1080;
+                const randomSeed = Date.now();
+                const imageUrl = `https://picsum.photos/seed/${randomSeed}/${imageWidth}/${imageHeight}`;
+                startScreen.style.backgroundImage = `url('${imageUrl}')`;
+             }
+        }
+
+        // --- Event Listeners ---
+        startButton.addEventListener('click', startGame);
+        nextButton.addEventListener('click', () => {
+            currentQuestionIndex++;
+            loadQuestion();
+        });
+        restartButton.addEventListener('click', () => {
+             // When restarting from final score, go back to start screen
+             quizMainContainer.classList.add('hidden');
+             finalScoreContainer.classList.add('hidden');
+             loadStartBackground(); // Load a new background
+             startScreen.classList.remove('hidden');
+             // Don't call restartQuiz() here, wait for start button again
+        });
+        congratsCloseButton.addEventListener('click', () => {
+            congratsOverlay.classList.add('hidden');
+            if (currentQuestionIndex < shuffledQuestions.length - 1) {
+                 nextButton.classList.remove('hidden');
+            } else {
+                 showFinalScore();
+            }
+        });
+
+        // --- Initial Load ---
+        loadStartBackground();
+
+    </script>
+</body>
+</html>
